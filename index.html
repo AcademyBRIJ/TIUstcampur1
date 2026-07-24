@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBT D'Ajiks Academy - Simulasi Ujian</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MathJax v3 CDN untuk Render Persamaan Matematika Tegak dan Rapi -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col justify-between select-none">
+
+    <!-- ================= HALAMAN LOGIN ================= -->
+    <div id="login-page" class="fixed inset-0 bg-sky-100 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center border border-sky-200">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-sky-800">D'Ajiks Academy</h1>
+                <p class="text-sm text-gray-500 mt-1">Sistem Ujian CBT (20 Soal)</p>
+            </div>
+            <form id="login-form" onsubmit="startExam(event)">
+                <div class="mb-4 text-left">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Nama Peserta</label>
+                    <input type="text" id="username" required placeholder="Masukkan nama lengkap Anda" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none text-gray-800">
+                </div>
+                <div class="mb-6 text-left">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password" required placeholder="Masukkan password" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none text-gray-800">
+                    <p id="login-error" class="text-xs text-red-500 mt-1 hidden">Password salah! Silakan coba lagi.</p>
+                </div>
+                <button type="submit" 
+                    class="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow">
+                    Mulai Ujian
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= APLIKASI UJIAN ================= -->
+    <div id="exam-app" class="hidden flex-col min-h-screen">
+        
+        <!-- HEADER -->
+        <header class="bg-sky-200 border-b border-sky-300 px-4 py-3 sticky top-0 z-40 shadow-sm">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+                <div class="flex items-center space-x-3">
+                    <span class="font-bold text-sky-900 text-lg tracking-wide">D'Ajiks Academy</span>
+                    <span class="hidden sm:inline text-sky-400">|</span>
+                    <span class="text-sm text-sky-800">Peserta: <strong id="display-name" class="text-sky-950">-</strong></span>
+                </div>
+                <div class="bg-white px-4 py-1.5 rounded-md border border-sky-300 shadow-inner flex items-center space-x-2">
+                    <span class="text-xs text-gray-500 uppercase font-bold tracking-wider">Sisa Waktu:</span>
+                    <span id="timer" class="font-mono text-lg font-bold text-red-600">25:00</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- KONTEN UTAMA -->
+        <main class="max-w-7xl w-full mx-auto p-4 flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            
+            <!-- AREA SOAL -->
+            <section class="lg:col-span-3 bg-white rounded-lg shadow border border-gray-200 flex flex-col min-h-[500px]">
+                <div class="bg-gray-50 border-b border-gray-200 px-6 py-3 flex justify-between items-center">
+                    <h2 class="font-bold text-gray-700 text-lg">Soal No. <span id="current-question-num">1</span></h2>
+                    <span class="text-xs bg-sky-100 text-sky-800 px-2.5 py-1 rounded-full font-medium">Pilihan Ganda</span>
+                </div>
+
+                <div class="p-6 flex-grow">
+                    <div id="question-text" class="text-gray-800 text-base leading-relaxed mb-6 font-medium select-text">
+                        <!-- Teks soal diinjeksi via JS -->
+                    </div>
+
+                    <div id="options-container" class="space-y-3">
+                        <!-- Opsi jawaban diinjeksi via JS -->
+                    </div>
+                </div>
+
+                <!-- FOOTER NAVIGASI -->
+                <div class="bg-gray-50 border-t border-gray-200 p-4 flex flex-wrap justify-between items-center gap-2">
+                    <button id="btn-prev" onclick="prevQuestion()" 
+                        class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded font-medium text-sm transition shadow disabled:opacity-50 disabled:cursor-not-allowed">
+                        &laquo; Soal Sebelumnya
+                    </button>
+
+                    <label class="flex items-center space-x-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-4 py-2 rounded font-medium text-sm cursor-pointer transition shadow">
+                        <input type="checkbox" id="chk-doubtful" onchange="toggleDoubtful()" class="w-4 h-4 text-yellow-600 rounded focus:ring-yellow-400">
+                        <span>Ragu-ragu</span>
+                    </label>
+
+                    <button id="btn-next" onclick="nextQuestion()" 
+                        class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded font-medium text-sm transition shadow">
+                        Soal Berikutnya &raquo;
+                    </button>
+                </div>
+            </section>
+
+            <!-- DAFTAR NOMOR SOAL -->
+            <aside class="lg:col-span-1 bg-white rounded-lg shadow border border-gray-200 p-4 lg:sticky lg:top-20">
+                <h3 class="font-bold text-gray-700 text-center mb-3 pb-2 border-b border-gray-200">
+                    Navigasi Soal
+                </h3>
+                <div id="number-grid" class="grid grid-cols-5 gap-2 max-h-[350px] overflow-y-auto p-1 custom-scrollbar">
+                    <!-- Grid nomor -->
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-200 text-xs space-y-1.5 text-gray-600">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 bg-green-500 rounded border inline-block"></span>
+                        <span>Sudah Dijawab</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 bg-yellow-400 rounded border inline-block"></span>
+                        <span>Ragu-ragu</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 bg-white border-2 border-gray-300 rounded inline-block"></span>
+                        <span>Belum Dijawab</span>
+                    </div>
+                </div>
+            </aside>
+
+        </main>
+    </div>
+
+    <!-- ================= HALAMAN HASIL & PEMBAHASAN ================= -->
+    <div id="result-page" class="hidden min-h-screen bg-gray-100 flex-col p-4 select-text">
+        <div class="max-w-5xl mx-auto w-full bg-white rounded-xl shadow-md border border-gray-200 p-6 my-6">
+            <div class="text-center pb-6 border-b border-gray-200">
+                <h1 class="text-3xl font-bold text-sky-900">Hasil Ujian CBT</h1>
+                <p class="text-gray-600 mt-1">D'Ajiks Academy</p>
+                <div class="mt-4 inline-block bg-sky-50 border border-sky-200 rounded-lg p-4 min-w-[250px]">
+                    <span class="block text-sm text-gray-500">Nilai Akhir Anda</span>
+                    <span id="score-text" class="text-5xl font-extrabold text-sky-600">0</span>
+                    <span class="block text-xs text-gray-400 mt-1">Skor Maksimal: 100</span>
+                </div>
+                <div class="mt-3 flex justify-center space-x-6 text-sm">
+                    <span class="text-green-600 font-bold">Benar: <span id="correct-count">0</span></span>
+                    <span class="text-red-600 font-bold">Salah: <span id="incorrect-count">0</span></span>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">Koreksi & Pembahasan Detail</h2>
+                <div id="review-container" class="space-y-6">
+                    <!-- Koreksi diinjeksi via JS -->
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <button onclick="location.reload()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-6 rounded-lg transition shadow">
+                    Selesai & Ulangi Ujian
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT ================= -->
+    <script>
+        // Data 20 Soal Baru Beserta Opsi, Kunci Jawaban, dan Pembahasan
+        const questions = [
+            {
+                id: 1,
+                text: "Enam orang tim wartawan yaitu Nur, Polo, Tom, Indra, Sony, dan Bara bertugas keluar kota menggunakan kereta api ekonomi. Sebelumnya mereka telah membeli tiket dan memesan kursi berdekatan di baris depan dan belakang. Pada setiap baris tersusun tiga kursi yang berderet dari kiri ke kanan. Informasi yang tercetak di tiket kursi Nur adalah 9A, terletak tepat di samping jendela kereta dan tepat di belakang kursi Indra. Bara duduk di baris belakang bersebelahan dengan Tom. Tepat di depan Tom adalah kursi nomor 8B yang ada di sebelah kanan kursi Indra, serta ada di sebelah kiri kursi Polo. Manakah pernyataan yang paling tepat?",
+                options: [
+                    "Indra duduk di kursi nomor 8B",
+                    "Polo duduk di kursi nomor 9C",
+                    "Tom duduk di kursi nomor 8C",
+                    "Sony duduk di kursi nomor 8B",
+                    "Bara duduk di kursi nomor 9B"
+                ],
+                key: 3, // d
+                explanation: "Posisi kursi:\nBaris Depan (Baris 8): 8A = Indra, 8B = Sony, 8C = Polo\nBaris Belakang (Baris 9): 9A = Nur, 9B = Tom, 9C = Bara\n\nDengan demikian, pilihan yang paling tepat adalah **Sony duduk di kursi nomor 8B**."
+            },
+            {
+                id: 2,
+                text: "Sebuah rumah kost memiliki 8 kamar yang tersusun dalam 2 lantai yang setiap lantai memiliki 4 kamar yang berderetan. Lantai 1 memiliki kamar 1A, 1B, 1C, dan 1D, begitu pula dengan lantai 2. Kamar-kamar tersebut dihuni oleh 8 mahasiswa yaitu Andi, Budi, Citra, Deni, Eka, Fani, Gita, dan Hasan. Andi menempati kamar 2A yang berada tepat di atas kamar Budi. Citra menempati kamar di sebelah kanan Budi di lantai 1. Deni menempati kamar di paling ujung kanan lantai 2. Eka menempati kamar tepat di atas Citra. Fani menempati kamar 1D. Gita bersebelahan dengan Eka dan berada di sebelah kiri Deni. Hasan menempati kamar yang tersisa. Manakah pernyataan yang paling tepat?",
+                options: [
+                    "Budi menempati kamar 1B",
+                    "Gita menempati kamar 2C",
+                    "Eka menempati kamar 2B",
+                    "Hasan menempati kamar 1C",
+                    "Citra menempati kamar 1C"
+                ],
+                key: 2, // c
+                explanation: "Susunan Kamar:\nLantai 2: 2A = Andi, 2B = Eka, 2C = Gita, 2D = Deni\nLantai 1: 1A = Budi, 1B = Citra, 1C = Hasan, 1D = Fani\n\nDengan demikian, Eka menempati kamar di atas Citra (1B) yaitu **kamar 2B**."
+            },
+            {
+                id: 3,
+                text: "Delapan orang penumpang kereta duduk saling berhadapan dalam satu gerbong. Mereka adalah Alya, Bima, Citra, Deni, Eka, Fajar, Gina, dan Hadi. Terdapat dua baris kursi yang saling berhadapan, masing-masing baris memiliki 4 kursi berurutan dari kiri ke kanan. Baris A menghadap ke arah Baris B. Alya duduk di ujung kiri baris A dan berhadapan langsung dengan Bima. Citra duduk bersebelahan dengan Alya di sebelah kanannya. Deni duduk di ujung kanan baris B. Eka duduk berhadapan dengan Citra. Fajar duduk di sebelah kanan Eka dan berhadapan dengan Gina. Hadi duduk di kursi yang tersisa. Manakah pernyataan yang SALAH?",
+                options: [
+                    "Bima duduk di ujung kiri baris B dan berhadapan dengan Alya",
+                    "Gina duduk di ujung kanan baris A dan bersebelahan dengan Fajar",
+                    "Eka duduk di posisi kedua dari kiri baris B dan berhadapan dengan Citra",
+                    "Hadi duduk di posisi keempat dari kiri baris A dan berhadapan dengan Deni",
+                    "Fajar duduk di posisi ketiga dari kiri baris B dan bersebelahan dengan Eka"
+                ],
+                key: 1, // b
+                explanation: "Susunan Posisi Duduk:\nBaris A (Kiri -> Kanan): Alya, Citra, Gina, Hadi\nBaris B (Kiri -> Kanan): Bima, Eka, Fajar, Deni\n\nPernyataan B menyatakan Gina bersebelahan dengan Fajar, padahal Gina berada di Baris A sedangkan Fajar di Baris B."
+            },
+            {
+                id: 4,
+                text: "Ada salah satu meja bundar di pesta ulang tahun Nita yang terdiri atas tamu undangan istimewa yang duduk melingkar saling berhadapan. Para tamu tersebut bernama Yoyok, Maryani, Timi, Loly, dan Hasnah. Tampak Timi duduk di antara Yoyok dan Hasnah. Sementara itu, Yoyok tidak bersedia duduk dekat dengan Loly. Manakah pernyataan di bawah ini yang paling tepat?",
+                options: [
+                    "Timi duduk di antara Hasnah dan Maryani",
+                    "Maryani duduk di antara Loly dan Timi",
+                    "Yoyok duduk di antara Timi dan Hasnah",
+                    "Hasnah duduk di antara Timi dan Maryani",
+                    "Loly duduk di antara Hasnah dan Maryani"
+                ],
+                key: 4, // e
+                explanation: "Urutan lingkaran meja bundar:\nYoyok - Timi - Hasnah - Loly - Maryani (kembali ke Yoyok).\nOleh karena itu, Loly duduk melingkar di antara Hasnah dan Maryani."
+            },
+            {
+                id: 5,
+                text: "Delapan orang tamu undangan sedang makan malam di sebuah meja persegi panjang. Mereka adalah Anton, Bella, Candra, Dina, Erik, Fira, Gilang, dan Hanna. Meja tersebut memiliki 4 sisi, yaitu sisi utara, selatan, timur, dan barat. Setiap sisi ditempati oleh 2 orang yang duduk berdampingan. Anton duduk pada sisi utara bersamaan dengan Bella yang dekat dengan Gilang. Candra duduk berhadapan langsung dengan Anton sedangkan Dina duduk pada sisi meja yang sama dengan Candra. Selain Fira, Erik juga duduk di sisi barat yang tidak mau dekat dengan Candra. Gilang duduk berhadapan dengan Erik. Hanna duduk di kursi yang tersisa. Manakah pernyataan yang SALAH?",
+                options: [
+                    "Candra dan Dina duduk di sisi selatan",
+                    "Gilang dan Hanna duduk di sisi timur",
+                    "Anton berhadapan dengan Candra",
+                    "Erik berhadapan dengan Hanna",
+                    "Bella duduk di sebelah Anton di sisi utara"
+                ],
+                key: 3, // d
+                explanation: "Posisi Duduk:\n- Utara: Anton & Bella\n- Selatan: Candra & Dina\n- Barat: Erik & Fira\n- Timur: Gilang & Hanna\n\nErik di sisi barat berhadapan langsung dengan Gilang di sisi timur. Maka, Erik berhadapan dengan Gilang, bukan Hanna."
+            },
+            {
+                id: 6,
+                text: "Nilai dari $4 \\times 1\\frac{1}{4} - 2,5 + \\frac{2}{3} = \\dots$",
+                options: [
+                    "\\(\\frac{17}{6}\\)",
+                    "\\(\\frac{19}{6}\\)",
+                    "\\(\\frac{21}{6}\\)",
+                    "\\(\\frac{10}{3}\\)",
+                    "\\(\\frac{11}{3}\\)"
+                ],
+                key: 1, // b
+                explanation: "Langkah Perhitungan:\n$$4 \\times \\frac{5}{4} = 5$$\n$$5 - 2,5 = 2,5 = \\frac{5}{2}$$\n$$\\frac{5}{2} + \\frac{2}{3} = \\frac{15 + 4}{6} = \\frac{19}{6}$$"
+            },
+            {
+                id: 7,
+                text: "Nilai dari $6 : 1\\frac{1}{2} + 0,75 \\times 2\\frac{2}{3} = \\dots$",
+                options: [
+                    "5",
+                    "6",
+                    "6,5",
+                    "7",
+                    "7,5"
+                ],
+                key: 1, // b
+                explanation: "Langkah Perhitungan:\n$$6 : \\frac{3}{2} = 6 \\times \\frac{2}{3} = 4$$\n$$0,75 \\times 2\\frac{2}{3} = \\frac{3}{4} \\times \\frac{8}{3} = 2$$\n$$4 + 2 = 6$$"
+            },
+            {
+                id: 8,
+                text: "Nilai dari $3,6 + 5 \\times \\frac{3}{5} - 1\\frac{1}{4} = \\dots$",
+                options: [
+                    "4,85",
+                    "5,05",
+                    "5,35",
+                    "5,85",
+                    "6,35"
+                ],
+                key: 2, // c
+                explanation: "Langkah Perhitungan:\n$$5 \\times \\frac{3}{5} = 3$$\n$$3,6 + 3 = 6,6$$\n$$6,6 - 1,25 = 5,35$$"
+            },
+            {
+                id: 9,
+                text: "Diketahui:<br>$$A = \\text{berat total dari 18 kardus beras, masing-masing berisi 25 kg}$$<br>$$B = \\text{berat 3 kuintal beras}$$<br>Berdasarkan data di atas, pernyataan yang benar dari hubungan kuantitas berikut adalah ...",
+                options: [
+                    "\\(3A < B\\)",
+                    "\\(A > 2B\\)",
+                    "\\(A = B\\)",
+                    "\\(2A = 3B\\)",
+                    "\\(3A = 2B\\)"
+                ],
+                key: 3, // d
+                explanation: "Nilai A dan B:\n$$A = 18 \\times 25\\text{ kg} = 450\\text{ kg}$$\n$$B = 3\\text{ kuintal} = 300\\text{ kg}$$\n\nHubungan Kuantitas:\n$$2A = 2 \\times 450 = 900$$\n$$3B = 3 \\times 300 = 900$$\nJadi, $$2A = 3B$$"
+            },
+            {
+                id: 10,
+                text: "Diketahui:<br>$$P = \\text{harga laptop setelah diskon 20\\% lalu diskon 10\\% dari harga awal Rp 10.000.000}$$<br>$$Q = \\text{harga laptop setelah diskon langsung 30\\% dari harga awal Rp 10.000.000}$$<br>Berdasarkan data tersebut, pernyataan yang benar dari hubungan kuantitas berikut adalah ...",
+                options: [
+                    "\\(P < Q\\)",
+                    "\\(P = Q\\)",
+                    "\\(P > 2Q\\)",
+                    "\\(2P > Q\\)",
+                    "\\(2P = Q\\)"
+                ],
+                key: 3, // d
+                explanation: "Hitung nilai P dan Q:\n$$P = 10.000.000 \\times 0,80 \\times 0,90 = 7.200.000$$\n$$Q = 10.000.000 \\times 0,70 = 7.000.000$$\n\nUji opsi D:\n$$2P = 2 \\times 7.200.000 = 14.400.000 > 7.000.000 (Q)$$\nSehingga $$2P > Q$$ bernilai benar."
+            },
+            {
+                id: 11,
+                text: "Diketahui:<br>$$P = \\text{Jarak yang ditempuh bus dengan kecepatan } 80\\text{ km/jam selama } 90\\text{ menit}$$<br>$$Q = \\text{Jarak yang ditempuh truk dengan kecepatan } 50\\text{ km/jam selama } 2\\text{ jam kemudian ditambah } 50\\text{ km}$$<br>Berdasarkan data tersebut, pernyataan yang benar dari hubungan kuantitas berikut adalah ...",
+                options: [
+                    "\\(4P < 5Q\\)",
+                    "\\(5P > 4Q\\)",
+                    "\\(5P = 4Q\\)",
+                    "\\(4P = 5Q\\)",
+                    "\\(P = Q\\)"
+                ],
+                key: 2, // c
+                explanation: "Hitung nilai P dan Q:\n$$P = 80\\text{ km/jam} \\times 1,5\\text{ jam} = 120\\text{ km}$$\n$$Q = (50\\text{ km/jam} \\times 2\\text{ jam}) + 50\\text{ km} = 100 + 50 = 150\\text{ km}$$\n\nHubungan Kuantitas:\n$$5P = 5 \\times 120 = 600$$\n$$4Q = 4 \\times 150 = 600$$\nSehingga $$5P = 4Q$$"
+            },
+            {
+                id: 12,
+                text: "Diketahui:<br>$$P = \\text{Total produksi 4 mesin dalam 150 menit dengan kapasitas 30 unit per menit tiap mesin}$$<br>$$Q = \\text{Total produksi 5 mesin dalam 2 jam dengan kapasitas 25 unit per menit tiap mesin}$$<br>Berdasarkan data tersebut, pernyataan yang benar dari hubungan kuantitas berikut adalah ...",
+                options: [
+                    "\\(P < Q\\)",
+                    "\\(5P = 6Q\\)",
+                    "\\(6P = 5Q\\)",
+                    "\\(5P > 6Q\\)",
+                    "Hubungan antara keduanya tidak dapat ditentukan"
+                ],
+                key: 1, // b
+                explanation: "Hitung nilai P dan Q:\n$$P = 4 \\times 150 \\times 30 = 18.000\\text{ unit}$$\n$$Q = 5 \\times 120 \\times 25 = 15.000\\text{ unit}$$\n\nHubungan Kuantitas:\n$$5P = 5 \\times 18.000 = 90.000$$\n$$6Q = 6 \\times 15.000 = 90.000$$\nSehingga $$5P = 6Q$$"
+            },
+            {
+                id: 13,
+                text: "Sebuah toko alat tulis menjual 15 kotak pensil warna dengan harga Rp 540.000. Toko tersebut menawarkan diskon 10% untuk setiap pembelian lebih dari 15 kotak pensil warna. Berapa harga yang harus dibayar jika seseorang membeli 24 kotak pensil warna setelah mendapatkan diskon?",
+                options: [
+                    "Rp 777.600",
+                    "Rp 820.800",
+                    "Rp 864.000",
+                    "Rp 806.400",
+                    "Rp 777.000"
+                ],
+                key: 0, // a
+                explanation: "Langkah Perhitungan:\n$$Harga per kotak = \\frac{540.000}{15} = \\text{Rp } 36.000$$\n$$Harga 24 kotak tanpa diskon = 24 \\times 36.000 = \\text{Rp } 864.000$$\n$$Diskon 10\\% = 0,10 \\times 864.000 = \\text{Rp } 86.400$$\n$$Harga akhir = 864.000 - 86.400 = \\text{Rp } 777.600$$"
+            },
+            {
+                id: 14,
+                text: "Sebuah toko alat tulis menjual 5 batang spidol dengan harga Rp 60.000. Toko tersebut menawarkan diskon 15% untuk setiap pembelian lebih dari 1 lusin spidol. Berapa harga yang harus dibayar jika seseorang membeli 2 lusin spidol setelah mendapatkan diskon?",
+                options: [
+                    "Rp 288.000",
+                    "Rp 240.000",
+                    "Rp 250.000",
+                    "Rp 255.000",
+                    "Rp 244.800"
+                ],
+                key: 4, // e
+                explanation: "Langkah Perhitungan:\n$$Harga per batang = \\frac{60.000}{5} = \\text{Rp } 12.000$$\n$$2 \\text{ lusin} = 24 \\text{ batang}$$\n$$Harga tanpa diskon = 24 \\times 12.000 = \\text{Rp } 288.000$$\n$$Harga akhir setelah diskon 15\\% = 288.000 \\times 0,85 = \\text{Rp } 244.800$$"
+            },
+            {
+                id: 15,
+                text: "Percetakan X memiliki 5 mesin fotokopi yang dapat menyelesaikan penyalinan dokumen sebanyak 10 rim kertas dalam waktu 4 jam. Untuk meningkatkan produktivitas, percetakan tersebut menambah jumlah mesin menjadi 10 mesin. Berapa lembar kertas yang dapat disalin jika mesin tersebut bekerja selama 3 jam?",
+                options: [
+                    "6.000 lembar",
+                    "6.500 lembar",
+                    "7.000 lembar",
+                    "7.500 lembar",
+                    "8.000 lembar"
+                ],
+                key: 3, // d
+                explanation: "Langkah Perhitungan:\n$$10 \\text{ rim} = 5.000 \\text{ lembar}$$\n$$Kapasitas 1 mesin per jam = \\frac{5.000}{5 \\times 4} = 250 \\text{ lembar/jam}$$\n$$Hasil 10 mesin selama 3 jam = 10 \\times 3 \\times 250 = 7.500 \\text{ lembar}$$"
+            },
+            {
+                id: 16,
+                text: "Carilah lima pilihan di bawah ini yang merupakan pengganti tanda tanya yang mewakili logika pada baris 1 dan 2!<br><img src='P1.jpg' alt='Gambar Soal' class='my-3 max-w-full h-auto rounded border'>",
+                options: [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                key: 2, // c
+                explanation: "Berdasarkan analisis pola logika spasial/figural pada baris 1 dan baris 2, bentuk dan pola perubahan gambar pada posisi tanda tanya secara konsisten diwakili oleh **pilihan C**."
+            },
+            {
+                id: 17,
+                text: "Carilah lima pilihan di bawah ini yang merupakan pengganti tanda tanya yang mewakili logika pada baris 1 dan 2!<br><img src='P2.jpg' alt='Gambar Soal' class='my-3 max-w-full h-auto rounded border'>",
+                options: [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                key: 0, // a
+                explanation: "Berdasarkan analisis transformasi elemen dan rotasi pola figural pada baris 1 dan 2, opsi yang secara logis menggantikan tanda tanya adalah **pilihan A**."
+            },
+            {
+                id: 18,
+                text: "Berikut ini daftar harga dan diskon smartphone di toko elektronik “TechZone”:<br><img src='STT1.jpg' alt='Gambar Soal' class='my-3 max-w-full h-auto rounded border'><br>Toko TechZone sedang mengadakan program tukar tambah. Jika seorang pelanggan menukarkan smartphone lamanya dan mendapatkan potongan harga tambahan sebesar Rp 1.500.000, smartphone mana yang akan memiliki harga akhir terendah?",
+                options: [
+                    "Galaxy-X",
+                    "iPhone-Z",
+                    "Pixel Pro",
+                    "One Plus Ultra",
+                    "Xiaomi Premium"
+                ],
+                key: 4, // e
+                explanation: "Setelah menghitung harga diskon awal ditambah dengan potongan tukar tambah sebesar Rp 1.500.000 untuk tiap produk pada tabel, varian **Xiaomi Premium** menghasilkan harga bersih terendah."
+            },
+            {
+                id: 19,
+                text: "Berikut ini daftar harga tiket perjalanan dari travel SAHN!<br><img src='STT3.jpg' alt='Gambar Soal' class='my-3 max-w-full h-auto rounded border'><br>Jika harga tiket yang murah telah terbukti meningkatkan minat pelanggan, jurusan manakah yang paling diminati di travel SAHN?",
+                options: [
+                    "Bandung - Cirebon",
+                    "Bandung - Jakarta",
+                    "Bandung - Purwakarta",
+                    "Bandung - Depok",
+                    "Bandung - Bekasi"
+                ],
+                key: 1, // b
+                explanation: "Berdasarkan tabel daftar tarif travel SAHN, rute **Bandung - Jakarta** memiliki tarif paling terjangkau/murah sehingga menjadi rute yang paling diminati."
+            },
+            {
+                id: 20,
+                text: "Perhatikan tabel berikut yang menunjukkan data calon peserta paskibraka!<br><img src='STT4.jpg' alt='Gambar Soal' class='my-3 max-w-full h-auto rounded border'><br>Jika panitia seleksi Paskibraka menetapkan syarat untuk calon peserta laki-laki harus memiliki tinggi badan 165 – 175 cm dan berat badan 55 – 70 kg, sedangkan perempuan harus memiliki tinggi badan 160 – 170 cm dan berat badan 50 – 65 kg, maka yang memenuhi syarat untuk menjadi peserta paskibraka adalah . . .",
+                options: [
+                    "Andi, Budi, Citra",
+                    "Budi, Citra, Eva",
+                    "Citra, Eva, Fani",
+                    "Dani, Eva , Hadi",
+                    "Fani, Gina, Hadi"
+                ],
+                key: 1, // b
+                explanation: "Cocokkan kriteria tinggi dan berat badan pada tabel:\n- Laki-laki (Tinggi 165-175 cm, BB 55-70 kg)\n- Perempuan (Tinggi 160-170 cm, BB 50-65 kg)\n\nPeserta yang lolos seluruh kriteria secara lengkap adalah **Budi, Citra, dan Eva**."
+            }
+        ];
+
+        // State Aplikasi
+        let currentIndex = 0;
+        let answers = {};     
+        let doubtfuls = {};   
+        let timerInterval;
+        let timeRemaining = 25 * 60; // Durasi 25 menit
+
+        // Fungsi Memulai Ujian (Login)
+        function startExam(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('username').value.trim();
+            const passwordInput = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('login-error');
+
+            // Cek Password Baru (stcampur1)
+            if (passwordInput !== 'stcampur1') {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+            document.getElementById('display-name').innerText = usernameInput;
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('exam-app').classList.remove('hidden');
+            document.getElementById('exam-app').classList.add('flex');
+
+            initExam();
+        }
+
+        // Inisialisasi Ujian
+        function initExam() {
+            renderNumberGrid();
+            loadQuestion(currentIndex);
+            startTimer();
+        }
+
+        // Render Navigasi Grid Nomor
+        function renderNumberGrid() {
+            const grid = document.getElementById('number-grid');
+            grid.innerHTML = '';
+
+            questions.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.innerText = idx + 1;
+                btn.onclick = () => jumpToQuestion(idx);
+                
+                let btnClasses = "h-10 w-full rounded font-bold text-sm border flex items-center justify-center transition ";
+
+                if (idx === currentIndex) {
+                    btnClasses += "ring-2 ring-sky-600 ring-offset-1 ";
+                }
+
+                if (doubtfuls[idx]) {
+                    btnClasses += "bg-yellow-400 border-yellow-500 text-gray-900";
+                } else if (answers[idx] !== undefined) {
+                    btnClasses += "bg-green-500 border-green-600 text-white";
+                } else {
+                    btnClasses += "bg-white border-gray-300 text-gray-700 hover:bg-gray-100";
+                }
+
+                btn.className = btnClasses;
+                grid.appendChild(btn);
+            });
+        }
+
+        // Memuat Soal ke Layar
+        function loadQuestion(index) {
+            currentIndex = index;
+            const q = questions[index];
+
+            document.getElementById('current-question-num').innerText = index + 1;
+            document.getElementById('question-text').innerHTML = q.text;
+
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            const optionLabels = ['A', 'B', 'C', 'D', 'E'];
+            
+            q.options.forEach((opt, optIdx) => {
+                const isSelected = answers[index] === optIdx;
+                
+                const label = document.createElement('label');
+                label.className = `flex items-start space-x-3 p-3.5 rounded-lg border cursor-pointer transition ${
+                    isSelected 
+                        ? 'bg-sky-50 border-sky-500 text-sky-900 font-medium' 
+                        : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                }`;
+
+                label.innerHTML = `
+                    <input type="radio" name="answer" value="${optIdx}" ${isSelected ? 'checked' : ''} 
+                        onchange="selectOption(${optIdx})" class="mt-0.5 text-sky-600 focus:ring-sky-500">
+                    <span class="font-bold text-sm text-sky-800">${optionLabels[optIdx]}.</span>
+                    <span class="text-sm leading-relaxed">${opt}</span>
+                `;
+
+                optionsContainer.appendChild(label);
+            });
+
+            document.getElementById('chk-doubtful').checked = !!doubtfuls[index];
+            document.getElementById('btn-prev').disabled = index === 0;
+            
+            const btnNext = document.getElementById('btn-next');
+            if (index === questions.length - 1) {
+                btnNext.innerText = 'Selesai';
+                btnNext.className = "px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm transition shadow";
+            } else {
+                btnNext.innerHTML = 'Soal Berikutnya &raquo;';
+                btnNext.className = "px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded font-medium text-sm transition shadow";
+            }
+
+            renderNumberGrid();
+
+            // Render MathJax untuk persamaan matematika
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function selectOption(optIndex) {
+            answers[currentIndex] = optIndex;
+            renderNumberGrid();
+        }
+
+        function toggleDoubtful() {
+            doubtfuls[currentIndex] = document.getElementById('chk-doubtful').checked;
+            renderNumberGrid();
+        }
+
+        function nextQuestion() {
+            if (currentIndex < questions.length - 1) {
+                loadQuestion(currentIndex + 1);
+            } else {
+                finishExam();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentIndex > 0) {
+                loadQuestion(currentIndex - 1);
+            }
+        }
+
+        function jumpToQuestion(index) {
+            loadQuestion(index);
+        }
+
+        // Jalankan Timer
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+
+                document.getElementById('timer').innerText = 
+                    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Waktu pengerjaan telah habis!");
+                    finishExam(true);
+                }
+            }, 1000);
+        }
+
+        // Selesai Ujian & Hitung Nilai
+        function finishExam(force = false) {
+            if (!force) {
+                const confirmed = confirm("Apakah Anda yakin ingin menyelesaikan ujian ini?");
+                if (!confirmed) return;
+            }
+
+            clearInterval(timerInterval);
+
+            let correctCount = 0;
+            questions.forEach((q, idx) => {
+                if (answers[idx] === q.key) {
+                    correctCount++;
+                }
+            });
+
+            // Hitung Nilai Akhir (Skala 100)
+            const finalScore = Math.round((correctCount / questions.length) * 100);
+
+            // Tampilkan Hasil
+            document.getElementById('exam-app').classList.add('hidden');
+            document.getElementById('result-page').classList.remove('hidden');
+            document.getElementById('result-page').classList.add('flex');
+
+            document.getElementById('score-text').innerText = finalScore;
+            document.getElementById('correct-count').innerText = correctCount;
+            document.getElementById('incorrect-count').innerText = questions.length - correctCount;
+
+            renderReview();
+        }
+
+        // Render Halaman Koreksi dan Pembahasan
+        function renderReview() {
+            const container = document.getElementById('review-container');
+            container.innerHTML = '';
+            const optionLabels = ['A', 'B', 'C', 'D', 'E'];
+
+            questions.forEach((q, idx) => {
+                const userAnswer = answers[idx];
+                const isCorrect = userAnswer === q.key;
+
+                const card = document.createElement('div');
+                card.className = `p-5 rounded-lg border ${
+                    isCorrect ? 'border-green-300 bg-green-50/30' : 'border-red-300 bg-red-50/30'
+                }`;
+
+                let optionsHTML = '';
+                q.options.forEach((opt, oIdx) => {
+                    let optClass = "text-gray-700";
+                    let badge = "";
+
+                    if (oIdx === q.key) {
+                        optClass = "font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded";
+                        badge = " <span class='text-xs font-bold text-green-800'>(Kunci Jawaban)</span>";
+                    }
+                    if (userAnswer === oIdx && !isCorrect) {
+                        optClass = "font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded line-through";
+                        badge = " <span class='text-xs font-bold text-red-800'>(Jawaban Anda)</span>";
+                    }
+
+                    optionsHTML += `
+                        <div class="text-sm my-1 ${optClass}">
+                            ${optionLabels[oIdx]}. ${opt} ${badge}
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-3 border-b pb-2">
+                        <span class="font-bold text-gray-800">Soal No. ${idx + 1}</span>
+                        <span class="text-xs px-2.5 py-1 rounded-full font-bold ${
+                            isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }">
+                            ${isCorrect ? 'Benar' : 'Salah / Tidak Dijawab'}
+                        </span>
+                    </div>
+                    <div class="text-gray-800 text-sm mb-4 font-medium">${q.text}</div>
+                    <div class="mb-4 space-y-1">${optionsHTML}</div>
+                    <div class="bg-white p-4 rounded border border-gray-200 text-xs text-gray-700 leading-relaxed whitespace-pre-line">
+                        <strong class="text-sky-800 text-sm block mb-1">📌 Pembahasan:</strong>
+                        ${q.explanation}
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            // Render MathJax pada Pembahasan
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+    </script>
+</body>
+</html>
